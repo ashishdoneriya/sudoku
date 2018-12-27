@@ -1,0 +1,261 @@
+<!Doctype HTML>
+<html>
+
+<head>
+	<title>Sudoku Solver</title>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="initial-scale=1, maximum-scale=1">
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.5.13/vue.min.js"></script>
+</head>
+
+<body>
+	<h1>Sudoku Solver</h1>
+	<div id="vapp">
+		<table class="internalTable">
+			<tr v-for="i in 9">
+				<td v-for="j in 9">
+					<input type="number" v-zero-to-nine v-model="sudoku[(i - 1)][(j - 1)]" onFocus="this.select()">
+
+				</td>
+			</tr>
+		</table>
+		<button @click="solve">Get Result</button>
+		<button @click="reset">Reset</button>
+		<h2 v-show="isSudokuInvalid" style="color:red">Invalid Sudoku</h2>
+	</div>
+	<script>
+		new Vue({
+			el: '#vapp',
+			data: {
+				sudoku: [],
+				isSudokuInvalid: false
+			},
+			created: function() {
+				this.reset();
+			},
+			methods: {
+				reset() {
+					this.sudoku = [
+						[],
+						[],
+						[],
+						[],
+						[],
+						[],
+						[],
+						[],
+						[]
+					];
+					this.isSudokuInvalid = false;
+				},
+				solve() {
+					this.isSudokuInvalid = false;
+					var copy = JSON.parse(JSON.stringify(this.sudoku));
+					for (var i = 0; i < 9; i++) {
+						for (var j = 0; j < 9; j++) {
+							if (copy[i][j] == undefined) {
+								copy[i][j] = 0;
+							}
+						}
+					}
+					if (!this.isSudokuValid(copy)) {
+						this.isSudokuInvalid = true;
+					} else {
+						this.sudoku = this.getResult(copy);
+					}
+				},
+				getResult(board) {
+					for (var row = 0; row < 9; row++) {
+						for (var column = 0; column < 9; column++) {
+							if (board[row][column] != 0) {
+								continue;
+							}
+							var possibleValuesList = this.getPossibleValues(row, column, board);
+							var length = this.getLength(possibleValuesList);
+							if (length == 0) {
+								return null;
+							} else {
+								for (var possibleValue of possibleValuesList) {
+									var copy = this.getCopy(row, column, possibleValue, board);
+									var result = this.getResult(copy);
+									if (result != null) {
+										return result;
+									}
+								}
+							}
+							return null;
+						}
+					}
+					return board;
+				},
+				getCopy(row, column, num, board) {
+					var board_copy = JSON.parse(JSON.stringify(board));
+					board_copy[row][column] = num;
+					return board_copy;
+				},
+				getPossibleValues(row, column, board) {
+					var canNotBeAdded = new Set();
+					var i, j;
+					for (i = 0; i < 9; i++) {
+						canNotBeAdded.add(board[row][i]);
+					}
+
+					// Get already filled vertical elements
+					for (i = 0; i < 9; i++) {
+						canNotBeAdded.add(board[i][column]);
+					}
+					// Get all elements which are in the same box
+					// as the point/number [row, column]
+					var boxRowStart = row - row % 3,
+						boxColumnStart = column - column % 3;
+					for (i = boxRowStart; i < boxRowStart + 3; i++) {
+						for (j = boxColumnStart; j < boxColumnStart + 3; j++) {
+							canNotBeAdded.add(board[i][j]);
+						}
+					}
+					var canBeAdded = new Set();
+					for (i = 1; i <= 9; i++) {
+						canBeAdded.add(i);
+					}
+					return this.difference(canBeAdded, canNotBeAdded);
+				},
+				difference(a1, a2) {
+					var newarr = [];
+					for (var i of a1) {
+						var detected = false;
+						for (var j of a2) {
+							if (i == j) {
+								detected = true;
+							}
+						}
+						if (!detected) {
+							newarr.push(i);
+						}
+					}
+					return newarr.sort();
+				},
+				getLength(arr) {
+					if (arr == undefined || arr == null) {
+						return 0;
+					}
+					var count = 0;
+					for (var obj of arr) {
+						count++;
+					}
+					return count;
+				},
+				isSudokuValid(sudoku) {
+					for (var i = 0; i < 9; i++) {
+						for (var j = 0; j < 9; j++) {
+							var num = sudoku[i][j];
+							if (num == 0) {
+								continue;
+							}
+							var k, l;
+							for (k = j + 1; k < 9; k++) {
+								if (sudoku[i][k] == 0) {
+									continue;
+								}
+								if (num == sudoku[i][k]) {
+									return false;
+								}
+							}
+							for (k = i + 1; k < 9; k++) {
+								if (sudoku[i][k] == 0) {
+									continue;
+								}
+								if (num == sudoku[k][j]) {
+									return false;
+								}
+							}
+							var t1 = parseInt(Math.floor(i / 3)) * 3;
+							var t2 = parseInt(Math.floor(j / 3)) * 3;
+							for (k = t1; k < t1 + 3; k++) {
+								for (l = t2; l < t2 + 3; l++) {
+									if (i != k && j != l && num == sudoku[k][l]) {
+										return false;
+									}
+								}
+
+							}
+						}
+					}
+					return true;
+				}
+			}
+		});
+		Vue.directive('zeroToNine', {
+			update: function(el, binding, vnode) {
+				if (el.value == undefined || el.value == '') {
+					return;
+				} else if (!el.value.match(/^\d+$/)) {
+					if (binding.oldValue != undefined) {
+						binding.value = binding.oldValue;
+						el.value = binding.oldValue;
+					} else {
+						el.value = '';
+						binding.value = undefined;
+					}
+				} else if (el.value > 9) {
+					binding.value = Number(el.value) % 10;
+					el.value = binding.value;
+				}
+			}
+		});
+	</script>
+</body>
+
+<style>
+	body,
+	#vapp {
+		margin: 0 auto;
+		width: 100%;
+		text-align: center;
+	}
+	
+	.internalTable {
+		font-family: arial, sans-serif;
+		border-collapse: collapse;
+		margin: 0 auto;
+		margin-bottom: 20px;
+	}
+	
+	.internalTable input {
+		width: 25px;
+		font-size: 20px;
+		text-align: center;
+	}
+	
+	.internalTable td,
+	.internalTable th {
+		padding: 0px !important;
+	}
+	
+	.internalTable tr:nth-child(3n) {
+		border-bottom: 2px solid #222;
+	}
+	
+	.internalTable tr:nth-child(3n - 2) {
+		border-top: 2px solid #222;
+	}
+	
+	.internalTable td:nth-child(3n) {
+		border-right: 2px solid #222;
+	}
+	
+	.internalTable td:nth-child(3n - 2) {
+		border-left: 2px solid #222;
+	}
+	
+	input[type=number]::-webkit-outer-spin-button,
+	input[type=number]::-webkit-inner-spin-button {
+		-webkit-appearance: none;
+		margin: 0;
+	}
+	
+	input[type=number] {
+		-moz-appearance: textfield;
+	}
+</style>
+
+</html>
