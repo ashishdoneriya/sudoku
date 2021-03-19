@@ -1,3 +1,4 @@
+
 <!Doctype HTML>
 <html>
 <head>
@@ -49,80 +50,92 @@
 				},
 				solve() {
 					this.isSudokuInvalid = false;
-					var copy = JSON.parse(JSON.stringify(this.sudoku));
-					for (var i = 0; i < 9; i++) {
-						for (var j = 0; j < 9; j++) {
-							if (copy[i][j] == undefined) {
-								copy[i][j] = 0;
+					for (let i = 0; i < 9; i++) {
+						for (let j = 0; j < 9; j++) {
+							if (this.sudoku[i][j] == undefined) {
+								this.sudoku[i][j] = '';
 							}
 						}
 					}
-					if (!this.isSudokuValid(copy)) {
+					if (!this.isSudokuValid(this.sudoku)) {
 						this.isSudokuInvalid = true;
 					} else {
-						this.sudoku = this.getResult(copy);
+						this.getResult();
 					}
 				},
-				getResult(board) {
-					for (var row = 0; row < 9; row++) {
-						for (var column = 0; column < 9; column++) {
-							if (board[row][column] != 0) {
+				async getResult() {
+					for (let row = 0; row < 9; row++) {
+						for (let column = 0; column < 9; column++) {
+							if (row == 1 && column == 6) {
+								console.log("hey");
+							}
+							if (this.sudoku[row][column]) {
 								continue;
 							}
-							var possibleValuesList = this.getPossibleValues(row, column, board);
-							var length = this.getLength(possibleValuesList);
+							let possibleValuesList = this.getPossibleValues(row, column, this.sudoku);
+							let length = this.getLength(possibleValuesList);
 							if (length == 0) {
 								return null;
 							} else {
-								for (var possibleValue of possibleValuesList) {
-									var copy = this.getCopy(row, column, possibleValue, board);
-									var result = this.getResult(copy);
+								for (let possibleValue of possibleValuesList) {
+									let originalBoardCopy =  JSON.parse(JSON.stringify(this.sudoku));
+									this.sudoku[row][column] = possibleValue;
+									this.sudoku = this.deepCopy(this.sudoku);
+									await this.delay(25);
+									let result = await this.getResult();
 									if (result != null) {
 										return result;
+									} else {
+										this.sudoku = originalBoardCopy;
+										this.sudoku = this.deepCopy(this.sudoku);
 									}
 								}
 							}
 							return null;
 						}
 					}
-					return board;
+					return this.sudoku;
 				},
-				getCopy(row, column, num, board) {
-					var board_copy = JSON.parse(JSON.stringify(board));
-					board_copy[row][column] = num;
-					return board_copy;
+				deepCopy(ele) {
+					return JSON.parse(JSON.stringify(ele));
 				},
 				getPossibleValues(row, column, board) {
-					var canNotBeAdded = new Set();
-					var i, j;
+					let canNotBeAdded = new Set();
+					let i, j;
 					for (i = 0; i < 9; i++) {
-						canNotBeAdded.add(board[row][i]);
+						if (board[row][i]) {
+							canNotBeAdded.add(board[row][i]);
+						}
 					}
 
 					// Get already filled vertical elements
 					for (i = 0; i < 9; i++) {
-						canNotBeAdded.add(board[i][column]);
+						if (board[i][column]) {
+							canNotBeAdded.add(board[i][column]);
+						}
 					}
 					// Get all elements which are in the same box
 					// as the point/number [row, column]
-					var boxRowStart = row - row % 3,
+					let boxRowStart = row - row % 3,
 						boxColumnStart = column - column % 3;
 					for (i = boxRowStart; i < boxRowStart + 3; i++) {
 						for (j = boxColumnStart; j < boxColumnStart + 3; j++) {
-							canNotBeAdded.add(board[i][j]);
+							if (board[i][j]) {
+								canNotBeAdded.add(board[i][j]);
+							}
 						}
 					}
-					var canBeAdded = new Set();
+					let canBeAdded = new Set();
 					for (i = 1; i <= 9; i++) {
 						canBeAdded.add(i);
 					}
 					return this.difference(canBeAdded, canNotBeAdded);
 				},
 				difference(a1, a2) {
-					var newarr = [];
-					for (var i of a1) {
-						var detected = false;
-						for (var j of a2) {
+					let newarr = [];
+					for (let i of a1) {
+						let detected = false;
+						for (let j of a2) {
 							if (i == j) {
 								detected = true;
 							}
@@ -137,22 +150,22 @@
 					if (arr == undefined || arr == null) {
 						return 0;
 					}
-					var count = 0;
-					for (var obj of arr) {
+					let count = 0;
+					for (let obj of arr) {
 						count++;
 					}
 					return count;
 				},
 				isSudokuValid(sudoku) {
-					for (var i = 0; i < 9; i++) {
-						for (var j = 0; j < 9; j++) {
-							var num = sudoku[i][j];
-							if (num == 0) {
+					for (let i = 0; i < 9; i++) {
+						for (let j = 0; j < 9; j++) {
+							let num = sudoku[i][j];
+							if (!num || num == 0) {
 								continue;
 							}
-							var k, l;
+							let k, l;
 							for (k = j + 1; k < 9; k++) {
-								if (sudoku[i][k] == 0) {
+								if (!sudoku[i][k]) {
 									continue;
 								}
 								if (num == sudoku[i][k]) {
@@ -160,15 +173,15 @@
 								}
 							}
 							for (k = i + 1; k < 9; k++) {
-								if (sudoku[i][k] == 0) {
+								if (!sudoku[i][k]) {
 									continue;
 								}
 								if (num == sudoku[k][j]) {
 									return false;
 								}
 							}
-							var t1 = parseInt(Math.floor(i / 3)) * 3;
-							var t2 = parseInt(Math.floor(j / 3)) * 3;
+							let t1 = parseInt(Math.floor(i / 3)) * 3;
+							let t2 = parseInt(Math.floor(j / 3)) * 3;
 							for (k = t1; k < t1 + 3; k++) {
 								for (l = t2; l < t2 + 3; l++) {
 									if (i != k && j != l && num == sudoku[k][l]) {
@@ -180,6 +193,14 @@
 						}
 					}
 					return true;
+				},
+				delay(n) {
+					n = n || 2000;
+					return new Promise(done => {
+						setTimeout(() => {
+							done();
+						}, n);
+					});
 				}
 			}
 		});
@@ -258,3 +279,4 @@
 </style>
 
 </html>
+
